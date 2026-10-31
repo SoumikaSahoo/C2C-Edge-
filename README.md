@@ -67,8 +67,8 @@ demo/
 | POST | `/api/complaints` | Submit a new complaint | Public |
 | GET | `/api/complaints/track/{ref}` | Track a complaint by reference number | Public |
 | POST | `/api/complaints/login` | Admin login | Public |
-| GET | `/api/complaints` | List all complaints | Admin |
-| PUT | `/api/complaints/{id}/status` | Update status and remarks | Admin |
+| GET | `/api/complaints` | List all complaints | Not enforced by the server |
+| PUT | `/api/complaints/{id}/status` | Update status and remarks | Not enforced by the server |
 
 ### Example: submit a complaint
 
@@ -112,11 +112,18 @@ To run without internet after one successful build, add `-o`:
 .\mvnw.cmd -o spring-boot:run
 ```
 
-## Admin Login (demo credentials)
+## Admin Login
 
-| Username | Password |
-|---|---|
-| `admin` | `admin123` |
+Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the environment before starting the application. Admin login is disabled if either variable is missing.
+
+Windows PowerShell:
+```
+$env:ADMIN_USERNAME = "your-admin-username"
+$env:ADMIN_PASSWORD = "your-strong-password"
+.\mvnw.cmd spring-boot:run
+```
+
+Do not commit real credentials to the repository.
 
 ## How to Use
 
@@ -134,7 +141,7 @@ To run without internet after one successful build, add `-o`:
 ## Known Limitations
 
 - Admin login only hides the admin section in the page; the admin API endpoints are not protected on the server.
-- Credentials are hard-coded for demo purposes.
+- Admin credentials must be provided through environment variables and are not stored in the repository.
 - Data is stored in memory and is lost when the application restarts.
 - No file or photo attachments.
 
@@ -146,4 +153,3 @@ To run without internet after one successful build, add `-o`:
 - Email or SMS notifications when the status changes
 - Search, filters and pagination in the admin table
 - Department assignment and a summary dashboard
-

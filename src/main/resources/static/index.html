@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CivicConnect</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 850px; margin: 20px auto; padding: 0 10px; background: #f4f6f8; }
+  h1 { text-align: center; color: #1a4d8f; }
+  section { background: white; border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 6px; }
+  input, select, textarea { display: block; margin: 6px 0; padding: 8px; width: 100%; box-sizing: border-box; }
+  button { padding: 8px 16px; background: #1a4d8f; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  td, th { border: 1px solid #ccc; padding: 6px; text-align: left; }
+  td input, td select { margin: 0; }
+  .msg { color: green; font-weight: bold; }
+  .err { color: red; }
+</style>
+</head>
+<body>
+<h1>CivicConnect - Public Grievance Portal</h1>
+
+<section>
+  <h2>Submit a Complaint</h2>
+  <input id="name" placeholder="Your name">
+  <input id="phone" placeholder="Phone number">
+  <select id="category">
+    <option>Road</option>
+    <option>Water</option>
+    <option>Electricity</option>
+    <option>Sanitation</option>
+  </select>
+  <input id="location" placeholder="Location">
+  <textarea id="description" rows="3" placeholder="Describe the issue"></textarea>
+  <button onclick="submitC()">Submit</button>
+  <p id="msg"></p>
+</section>
+
+<section>
+  <h2>Track Your Complaint</h2>
+  <input id="ref" placeholder="Reference number, e.g. CC-00001">
+  <button onclick="track()">Track</button>
+  <p id="out"></p>
+</section>
+
+<section>
+  <h2>Admin</h2>
+  <div id="loginBox">
+    <input id="user" placeholder="Username">
+    <input id="pass" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <p id="loginMsg" class="err"></p>
+  </div>
+  <div id="adminBox" style="display:none">
+    <button onclick="load()">Refresh</button>
+    <button onclick="logout()">Logout</button>
+    <table id="t"></table>
+  </div>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+const J = {'Content-Type': 'application/json'};
+
+async function submitC() {
+  const body = {};
+  ['name', 'phone', 'category', 'location', 'description'].forEach(k => body[k] = $(k).value);
+  const r = await fetch('/api/complaints', {method: 'POST', headers: J, body: JSON.stringify(body)});
+  if (r.ok) {
+    const d = await r.json();
+    $('msg').className = 'msg';
+    $('msg').innerText = 'Submitted! Your reference number is ' + d.referenceNo;
+    ['name', 'phone', 'location', 'description'].forEach(k => $(k).value = '');
+    } else {
+    $('msg').className = 'err';
+    $('msg').innerText = 'Please check your inputs (name and description are required, phone must be 10 digits)';
+  }
+}
+
+async function track() {
+  const r = await fetch('/api/complaints/track/' + $('ref').value.trim());
+  if (!r.ok) { $('out').className = 'err'; $('out').innerText = 'Complaint not found'; return; }
+  const c = await r.json();
+  $('out').className = '';
+  $('out').innerText = 'Status: ' + c.status + ' | Category: ' + c.category + ' | Remarks: ' + (c.remarks || '-');
+}
+
+async function login() {
+  const r = await fetch('/api/complaints/login', {method: 'POST', headers: J,
+    body: JSON.stringify({username: $('user').value, password: $('pass').value})});
+  if (!r.ok) { $('loginMsg').innerText = 'Wrong username or password'; return; }
+  $('loginMsg').innerText = '';
+  $('loginBox').style.display = 'none';
+  $('adminBox').style.display = 'block';
+  load();
+}
+
+function logout() {
+  $('adminBox').style.display = 'none';
+  $('loginBox').style.display = 'block';
+  $('pass').value = '';
+}
+
+async function load() {
+  const list = await (await fetch('/api/complaints')).json();
+  const statuses = ['SUBMITTED', 'IN_PROGRESS', 'RESOLVED', 'REJECTED'];
+  $('t').innerHTML = '<tr><th>Ref</th><th>Name</th><th>Category</th><th>Description</th><th>Status</th><th>Remarks</th><th></th></tr>' +
+    list.map(c => `<tr>
+      <td>${c.referenceNo}</td>
+      <td>${c.name}</td>
+      <td>${c.category}</td>
+      <td>${c.description}</td>
+      <td><select id="s${c.id}">${statuses.map(s => `<option ${s == c.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+      <td><input id="r${c.id}" value="${c.remarks || ''}"></td>
+      <td><button onclick="upd(${c.id})">Update</button></td>
+    </tr>`).join('');
+}
+
+async function upd(id) {
+  await fetch('/api/complaints/' + id + '/status', {method: 'PUT', headers: J,
+    body: JSON.stringify({status: $('s' + id).value, remarks: $('r' + id).value})});
+  load();
+}
+</script>
+</body>
+</html>
